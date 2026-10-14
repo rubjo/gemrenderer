@@ -45,7 +45,14 @@ const STONES = {
       orb: { light: '#ffb3cd', base: '#e30b5c', dark: '#8f0639' },
       // Baguette: a long, nearly sharp-cornered step cut — shallow body, one
       // wide terrace, standing on its keel line.
-      cut: { family: 'step', aspect: 2.2, cutAmt: 0.14, pavSteps: 1, hc: 0.32, pd: 0.38 },
+      cut: {
+        family: 'step',
+        aspect: 2.2,
+        cutAmt: 0.14,
+        pavSteps: 1,
+        hc: 0.32,
+        pd: 0.38,
+      },
       ior: 1.58,
       fire: 0.3,
       restTilt: 0.45,
@@ -61,7 +68,14 @@ const STONES = {
       glow: 0xa98aa3,
       orb: { light: '#c4aabf', base: '#70536a', dark: '#463248' },
       // Asscher: the square step cut — small table, deep corner cuts.
-      cut: { family: 'step', aspect: 1.0, cutAmt: 0.4, table: 0.42, hc: 0.46, pd: 0.5 },
+      cut: {
+        family: 'step',
+        aspect: 1.0,
+        cutAmt: 0.4,
+        table: 0.42,
+        hc: 0.46,
+        pd: 0.5,
+      },
       ior: 1.7,
       fire: 0.33,
       restTilt: 0.4,
@@ -77,7 +91,14 @@ const STONES = {
       glow: 0x9a4632,
       orb: { light: '#b0705f', base: '#5c2016', dark: '#38100a' },
       // Marquise: an elongated brilliant with pointed tips at both ends.
-      cut: { family: 'brilliant', marquise: 0.45, sx: 1.12, sz: 0.62, hc: 0.34, pd: 0.42 },
+      cut: {
+        family: 'brilliant',
+        marquise: 0.45,
+        sx: 1.12,
+        sz: 0.62,
+        hc: 0.34,
+        pd: 0.42,
+      },
       ior: 1.7,
       fire: 0.33,
       restTilt: 0.8,
@@ -125,7 +146,14 @@ const STONES = {
       glow: 0x4b8fc4,
       orb: { light: '#86b8e0', base: '#0f4c81', dark: '#082f52' },
       // Pear: the teardrop brilliant — round lobe, single cusp tip.
-      cut: { family: 'brilliant', pear: 0.95, sx: 0.88, sz: 0.82, hc: 0.4, pd: 0.5 },
+      cut: {
+        family: 'brilliant',
+        pear: 0.95,
+        sx: 0.88,
+        sz: 0.82,
+        hc: 0.4,
+        pd: 0.5,
+      },
       ior: 1.77,
       fire: 0.41,
       restTilt: 1.05,

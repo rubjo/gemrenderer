@@ -15,8 +15,16 @@
     const imgOf = (el) => el.querySelector('img.gr-gem, canvas.gr-gem')
 
     try {
-      const a = new GemView('#a', { ...gemSpec('ruby'), clarity: 8, autoSpin: false })
-      const b = new GemView('#b', { ...gemSpec('painite'), clarity: 3, shadow: false })
+      const a = new GemView('#a', {
+        ...gemSpec('ruby'),
+        clarity: 8,
+        autoSpin: false,
+      })
+      const b = new GemView('#b', {
+        ...gemSpec('painite'),
+        clarity: 3,
+        shadow: false,
+      })
       await new Promise((r) => setTimeout(r, 2500))
 
       // 1. both baked to PNG

@@ -506,7 +506,8 @@ function renderGem(spec, clarity) {
   return enqueue(async () => {
     const c = await ensureContext()
     const mesh = await mountStone(c, spec, clarity)
-    const r = frames.get(frameSig(spec))?.rect || computeFrameRect(c, mesh, spec)
+    const r =
+      frames.get(frameSig(spec))?.rect || computeFrameRect(c, mesh, spec)
     poseStone(c, mesh, spec)
     syncStone(c, mesh)
     beginFrame(c)

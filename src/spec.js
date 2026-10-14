@@ -101,8 +101,12 @@ export function resolveSpec(spec = {}) {
     ...s,
     color: Number.isFinite(color) ? color : DEFAULT_SPEC.color,
     cut,
-    glow: s.glow == null ? deriveGlow(Number.isFinite(color) ? color : DEFAULT_SPEC.color) : s.glow,
-    orb: s.orb || deriveOrb(Number.isFinite(color) ? color : DEFAULT_SPEC.color),
+    glow:
+      s.glow == null
+        ? deriveGlow(Number.isFinite(color) ? color : DEFAULT_SPEC.color)
+        : s.glow,
+    orb:
+      s.orb || deriveOrb(Number.isFinite(color) ? color : DEFAULT_SPEC.color),
   }
 }
 

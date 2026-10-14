@@ -2,7 +2,12 @@
 // drag, and a panel wired to the knobs the library actually exposes. The ten
 // stones come from the optional presets entry; the core renders plain specs.
 import { GemView, configure, getConfig } from '../src/index.js'
-import { GEM_ORDER, GEM_LABELS, GEM_CUT_NAMES, gemSpec } from '../src/presets.js'
+import {
+  GEM_ORDER,
+  GEM_LABELS,
+  GEM_CUT_NAMES,
+  gemSpec,
+} from '../src/presets.js'
 
 const $ = (id) => document.getElementById(id)
 const reduceMotion = window.matchMedia?.(
