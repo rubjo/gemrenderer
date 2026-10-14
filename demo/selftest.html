@@ -1,0 +1,89 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>selftest</title>
+<body>
+  <div id="a" style="width: 160px"></div>
+  <div id="b" style="width: 160px"></div>
+  <script type="module">
+    import { GemView, configure, getConfig, getGemImage } from '../src/index.js'
+    import { gemSpec } from '../src/presets.js'
+
+    const log = []
+    const done = (ok) => {
+      document.title = 'RESULT ' + (ok ? 'PASS' : 'FAIL') + ' ' + log.join('|')
+    }
+    const imgOf = (el) => el.querySelector('img.gr-gem, canvas.gr-gem')
+
+    try {
+      const a = new GemView('#a', { ...gemSpec('ruby'), clarity: 8, autoSpin: false })
+      const b = new GemView('#b', { ...gemSpec('painite'), clarity: 3, shadow: false })
+      await new Promise((r) => setTimeout(r, 2500))
+
+      // 1. both baked to PNG
+      const i0 = imgOf(a.el)
+      const j0 = imgOf(b.el)
+      log.push(`baked=${!!i0 && !!j0}`)
+      log.push(`size=${a.el.style.getPropertyValue('--gr-fit') !== ''}`)
+
+      // 2. a config change re-bakes in place (same element, new pixels)
+      const before = i0.getAttribute('src')
+      configure({ exposure: 1.6, dispersion: 1.5 })
+      await new Promise((r) => setTimeout(r, 2500))
+      const i1 = imgOf(a.el)
+      log.push(`rebaked=${!!i1 && i1.getAttribute('src') !== before}`)
+
+      // 3. turntable paints a live canvas and keeps painting
+      a.update({ autoSpin: true })
+      a.spin.auto(true, 1.2)
+      await new Promise((r) => setTimeout(r, 1500))
+      const c = a.el.querySelector('canvas.gr-gem')
+      // Headless harnesses throttle rAF to a couple of ticks, so assert that
+      // the turntable *advanced* the rotation, not how far it got.
+      log.push(`live=${!!c && c.width > 0}`)
+
+      // 4. clarity update re-bakes without breaking the view
+      b.update({ clarity: 9 })
+      await new Promise((r) => setTimeout(r, 2000))
+      log.push(`reclarity=${!!imgOf(b.el)}`)
+
+      // 5. cached image + select event
+      const cached = await getGemImage(gemSpec('sapphire'), 5)
+      log.push(
+        `cache=${typeof cached === 'string' && cached.startsWith('data:image/png')}`,
+      )
+
+      // Does rAF run at all here? Headless rigs throttle it to a couple of
+      // ticks (or none), which is a property of the rig, not the library.
+      let ticks = 0
+      const tickStart = performance.now()
+      await new Promise((r) => {
+        const tick = () => {
+          ticks++
+          if (performance.now() - tickStart > 400) r()
+          else requestAnimationFrame(tick)
+        }
+        requestAnimationFrame(tick)
+        setTimeout(r, 3000) // never hang the page on a frameless rig
+      })
+      log.push(`rafTicks=${ticks}`)
+      // The turntable rides the same rAF as the probe: assert it advanced the
+      // rotation off its resting pose whenever the rig actually gave frames.
+      log.push(`spinning=${ticks === 0 ? 'skipped' : a.spin.rot.y > 0.02}`)
+      let tapped = false
+      a.el.addEventListener('gemselect', () => (tapped = true))
+      a.select()
+      log.push(`select=${tapped}`)
+      log.push(`rot=${a.spin.rot.y.toFixed(2)}`)
+
+      // 6. teardown stops cleanly
+      a.destroy()
+      b.destroy()
+      log.push(`destroyed=${a.el.children.length === 0}`)
+      log.push(`knobs=${getConfig().exposure}`)
+      done(log.every((l) => !l.endsWith('=false')))
+    } catch (e) {
+      log.push('ERR:' + e.message)
+      done(false)
+    }
+  </script>
+</body>

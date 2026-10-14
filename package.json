@@ -1,0 +1,56 @@
+{
+  "name": "gemrenderer",
+  "version": "0.1.0",
+  "description": "A generic gemstone renderer: colour + cut family + real optics, ray-traced light paths in one shared WebGL context, no framework.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./presets": "./src/presets.js",
+    "./spec": "./src/spec.js",
+    "./spin": "./src/spin.js",
+    "./view": "./src/view.js"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:selftest": "SELFTEST=1 vite build",
+    "preview": "vite preview",
+    "format": "prettier --write src demo *.js"
+  },
+  "peerDependencies": {
+    "three": ">=0.163"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9",
+    "three": "^0.186.1",
+    "vite": "^8.3.1"
+  },
+  "keywords": [
+    "gem",
+    "gemstone",
+    "renderer",
+    "three",
+    "threejs",
+    "webgl",
+    "raytracing",
+    "brilliant",
+    "cabochon",
+    "jewelry",
+    "sparkle",
+    "badge"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rubjo/gemrenderer.git"
+  },
+  "homepage": "https://rubjo.github.io/gemrenderer/"
+}

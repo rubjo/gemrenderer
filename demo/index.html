@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>
+      gemrenderer — ten gemstones, ten cuts, ray-traced in the browser
+    </title>
+    <meta
+      name="description"
+      content="gemrenderer renders ten gemstones with three.js — one distinct faceting cut per stone, per-pixel light tracing with real dispersion, one shared WebGL context. Framework-free."
+    />
+    <style>
+      :root {
+        --bg: #07090f;
+        --bg-soft: #0d1119;
+        --line: #1c2230;
+        --ink: #e7ecf6;
+        --ink-dim: #8f9bb3;
+        --accent: #7fb2ff;
+        --tile: 118px;
+      }
+      /* Three studio floors to view the stones on. */
+      body[data-stage='graphite'] {
+        --bg: #14161b;
+        --bg-soft: #1b1e25;
+        --line: #2a2e38;
+      }
+      body[data-stage='paper'] {
+        --bg: #eceae4;
+        --bg-soft: #f6f5f1;
+        --line: #d8d4ca;
+        --ink: #1b1d24;
+        --ink-dim: #6a6d78;
+        --accent: #2f5fb3;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(
+            120% 80% at 50% -10%,
+            var(--bg-soft),
+            var(--bg) 60%
+          )
+          fixed;
+        color: var(--ink);
+        font:
+          15px/1.55 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        transition:
+          background 0.35s ease,
+          color 0.35s ease;
+      }
+      .serif {
+        font-family:
+          'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+      }
+      header {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: clamp(2.5rem, 7vw, 5.5rem) 1.5rem 1.5rem;
+        text-align: center;
+      }
+      h1 {
+        font-size: clamp(2rem, 5.5vw, 3.4rem);
+        line-height: 1.05;
+        margin: 0 0 0.6rem;
+        font-weight: 400;
+        letter-spacing: -0.015em;
+      }
+      h1 em {
+        font-style: italic;
+        color: var(--accent);
+      }
+      header p {
+        max-width: 56ch;
+        margin: 0 auto;
+        color: var(--ink-dim);
+      }
+      .tag {
+        display: inline-block;
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ink-dim);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0.35rem 0.8rem;
+        margin-bottom: 1.4rem;
+      }
+
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 1.5rem;
+        display: grid;
+        grid-template-columns: 300px minmax(0, 1fr);
+        gap: 2.5rem;
+        align-items: start;
+      }
+      @media (max-width: 880px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* ── options panel ── */
+      .panel {
+        position: sticky;
+        top: 1.25rem;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: color-mix(in srgb, var(--bg-soft) 70%, transparent);
+        backdrop-filter: blur(10px);
+        padding: 1.1rem 1.15rem 1.3rem;
+      }
+      .panel h2 {
+        font-size: 0.72rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--ink-dim);
+        margin: 0 0 1rem;
+        font-weight: 600;
+      }
+      .row {
+        margin-bottom: 0.95rem;
+      }
+      .row > label {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 0.82rem;
+        margin-bottom: 0.3rem;
+      }
+      .row output {
+        font-variant-numeric: tabular-nums;
+        color: var(--ink-dim);
+        font-size: 0.78rem;
+      }
+      input[type='range'] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+      }
+      .chip {
+        font: inherit;
+        font-size: 0.78rem;
+        color: var(--ink-dim);
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0.28rem 0.65rem;
+        cursor: pointer;
+      }
+      .chip[aria-pressed='true'] {
+        color: var(--ink);
+        border-color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 14%, transparent);
+      }
+      .switch {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+        font-size: 0.82rem;
+        padding: 0.3rem 0;
+        cursor: pointer;
+      }
+      .switch small {
+        display: block;
+        color: var(--ink-dim);
+        font-size: 0.72rem;
+      }
+      .hint {
+        margin: 1rem 0 0;
+        font-size: 0.74rem;
+        color: var(--ink-dim);
+      }
+      .hint a {
+        color: var(--accent);
+      }
+
+      /* ── hero ── */
+      .hero {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 1.5rem 1rem 1.1rem;
+        text-align: center;
+        background: radial-gradient(
+          60% 60% at 50% 40%,
+          color-mix(in srgb, var(--bg-soft) 80%, transparent),
+          transparent
+        );
+      }
+      #hero {
+        width: min(58vw, 330px);
+        margin-inline: auto;
+      }
+      .hero .who {
+        font-size: clamp(1.15rem, 3vw, 1.6rem);
+        margin: 0.6rem 0 0;
+      }
+      .hero .what {
+        color: var(--ink-dim);
+        font-size: 0.8rem;
+        margin: 0.15rem 0 0;
+      }
+
+      /* ── the ladder ── */
+      .ladder {
+        margin-top: 2.25rem;
+      }
+      .ladder h2 {
+        font-size: 0.72rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--ink-dim);
+        font-weight: 600;
+        margin: 0 0 1rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(var(--tile), 1fr));
+        gap: 1.4rem 0.75rem;
+        align-items: end;
+      }
+      .cell {
+        text-align: center;
+        cursor: pointer;
+        background: none;
+        border: 0;
+        padding: 0;
+        color: inherit;
+        font: inherit;
+      }
+      .cell .mount {
+        width: 100%;
+      }
+      .cell .name {
+        display: block;
+        font-size: 0.78rem;
+        margin-top: 0.45rem;
+      }
+      .cell .cut {
+        display: block;
+        font-size: 0.68rem;
+        color: var(--ink-dim);
+      }
+      .cell[aria-pressed='true'] .name {
+        color: var(--accent);
+      }
+      .grid-foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+      }
+      .grid-foot span {
+        font-size: 0.75rem;
+        color: var(--ink-dim);
+      }
+
+      footer {
+        max-width: 1100px;
+        margin: 3.5rem auto 4rem;
+        padding: 0 1.5rem;
+        color: var(--ink-dim);
+        font-size: 0.8rem;
+      }
+      footer a {
+        color: var(--accent);
+      }
+      pre {
+        background: var(--bg-soft);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 0.9rem 1.1rem;
+        overflow: auto;
+        color: var(--ink);
+        font-size: 0.8rem;
+      }
+      code {
+        font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+      }
+    </style>
+  </head>
+  <body data-stage="midnight">
+    <header>
+      <span class="tag">gemrenderer · MIT · framework-free</span>
+      <h1 class="serif">
+        Ten gemstones, <em>ten real cuts</em>,<br />traced light — in a browser
+      </h1>
+      <p>
+        Every stone is its own faceting: a trilliant, a baguette, an asscher, a
+        marquise, a heart, a cabochon, a pear, an emerald cut, a square
+        brilliant and a round brilliant. Each fragment traces its own hull —
+        Fresnel, refraction, total internal reflection, Beer–Lambert colour —
+        with the three channels bent at slightly different IORs, so the fire is
+        a light path, not a painted tint. <strong>Drag any stone.</strong>
+      </p>
+    </header>
+
+    <main>
+      <aside class="panel">
+        <h2>Options</h2>
+
+        <div class="row">
+          <label for="clarity">Clarity <output id="clarity-out">9</output></label>
+          <input id="clarity" type="range" min="0" max="9" step="1" value="9" />
+        </div>
+
+        <div class="row">
+          <label for="size"
+            >Stone size <output id="size-out">118px</output></label
+          >
+          <input
+            id="size"
+            type="range"
+            min="70"
+            max="420"
+            step="2"
+            value="118"
+          />
+        </div>
+
+        <div class="row">
+          <label for="fire"
+            >Fire (dispersion) <output id="fire-out">1.0×</output></label
+          >
+          <input
+            id="fire"
+            type="range"
+            min="0"
+            max="2.5"
+            step="0.05"
+            value="1"
+          />
+        </div>
+
+        <div class="row">
+          <label for="exposure"
+            >Brightness <output id="exposure-out">1.0×</output></label
+          >
+          <input
+            id="exposure"
+            type="range"
+            min="0.5"
+            max="2"
+            step="0.05"
+            value="1"
+          />
+        </div>
+
+        <div class="row">
+          <label for="bounces"
+            >Light paths <output id="bounces-out">by clarity</output></label
+          >
+          <input id="bounces" type="range" min="0" max="8" step="1" value="0" />
+        </div>
+
+        <div class="row">
+          <label>Rendering</label>
+          <div class="chips" id="mode">
+            <button class="chip" data-mode="traced" aria-pressed="true">
+              Ray-traced
+            </button>
+            <button class="chip" data-mode="physical" aria-pressed="false">
+              Rasterised
+            </button>
+          </div>
+        </div>
+
+        <div class="row">
+          <label>Studio floor</label>
+          <div class="chips" id="stage">
+            <button class="chip" data-stage="midnight" aria-pressed="true">
+              Midnight
+            </button>
+            <button class="chip" data-stage="graphite" aria-pressed="false">
+              Graphite
+            </button>
+            <button class="chip" data-stage="paper" aria-pressed="false">
+              Paper
+            </button>
+          </div>
+        </div>
+
+        <label class="switch">
+          <span>Turntable <small>keep the featured stone spinning</small></span>
+          <input id="auto" type="checkbox" checked />
+        </label>
+        <label class="switch">
+          <span>Drop shadow</span>
+          <input id="shadow" type="checkbox" checked />
+        </label>
+        <label class="switch">
+          <span>Cut labels</span>
+          <input id="labels" type="checkbox" checked />
+        </label>
+
+        <p class="hint">
+          Baked stones are cached per gem + clarity, and the whole page shares one
+          WebGL context.
+          <a href="https://github.com/rubjo/gemrenderer">README →</a>
+        </p>
+      </aside>
+
+      <section>
+        <div class="hero">
+          <div id="hero"></div>
+          <p class="who serif" id="hero-name">Diamond</p>
+          <p class="what" id="hero-cut">Round brilliant · clarity 9</p>
+        </div>
+
+        <div class="ladder">
+          <h2>The value ladder — lowest to highest</h2>
+          <div class="grid" id="grid"></div>
+          <div class="grid-foot">
+            <span>Click a stone to feature it.</span>
+            <span id="status"></span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <pre><code>npm install gemrenderer three</code></pre>
+      <pre><code>import { GemView } from 'gemrenderer'
+import { gemSpec } from 'gemrenderer/presets'
+
+new GemView('#mount', { ...gemSpec('ruby'), clarity: 8 })</code></pre>
+      <p>
+        gemrenderer is MIT licensed. The per-pixel hull tracer is a derivative
+        work of
+        <a href="https://github.com/ehsanwwe/diamond-shader-lab"
+          >ehsanwwe/diamond-shader-lab</a
+        >
+        by Ehsan Moradi (MIT) — see
+        <a
+          href="https://github.com/rubjo/gemrenderer/blob/main/THIRD_PARTY_NOTICES.md"
+          >third-party notices</a
+        >
+        for what came from where. Cut geometry after the diagrams at
+        <a href="http://www.facetdiagrams.net">facetdiagrams.net</a>.
+      </p>
+    </footer>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
