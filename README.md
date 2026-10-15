@@ -2,6 +2,12 @@
 
 **Gemstones, cut the way they're meant to be. Ray-traced in the browser, with no framework required.**
 
+## Support
+
+gemrenderer is free and MIT licensed. If you find it useful, you can support its development:
+
+[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white)](https://www.paypal.com/donate/?hosted_button_id=8GNAF6BQ7DACW)
+
 ![The gemrenderer demo: gemstones in a range of cuts rendered in the browser](docs/preview.png)
 
 gemrenderer renders gemstones by describing them in parts: a body colour, a cut, and a few optical constants. From there it builds the geometry and traces light through each facet. Fresnel reflection, refraction, total internal reflection and exit all come into play, with red, green and blue bending slightly differently to produce real chromatic fire. As light travels inside the stone, Beer–Lambert absorption deepens the colour based on the body colour, refractive index and dispersion.
