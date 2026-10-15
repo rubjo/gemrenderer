@@ -3,12 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>
-      gemrenderer — ten gemstones, ten cuts, ray-traced in the browser
-    </title>
+    <title>gemrenderer: real gemstone cuts, ray-traced in the browser</title>
     <meta
       name="description"
-      content="gemrenderer renders ten gemstones with three.js — one distinct faceting cut per stone, per-pixel light tracing with real dispersion, one shared WebGL context. Framework-free."
+      content="gemrenderer renders gemstones in a range of real cuts with three.js: per-pixel light tracing with real dispersion, and a single shared WebGL context. Framework-free."
     />
     <style>
       :root {
@@ -104,20 +102,24 @@
         gap: 2.5rem;
         align-items: start;
       }
-      @media (max-width: 880px) {
-        main {
-          grid-template-columns: 1fr;
-        }
-      }
 
       /* ── options panel ── */
       .panel {
+        grid-column: 1;
+        grid-row: 1 / span 2;
         position: sticky;
         top: 1.25rem;
         border: 1px solid var(--line);
         border-radius: 16px;
         background: color-mix(in srgb, var(--bg-soft) 70%, transparent);
         backdrop-filter: blur(10px);
+      }
+      /* The panel is a <details> so it can collapse on small screens. On wide
+         layouts the summary is hidden and it stays open. */
+      .panel > summary {
+        display: none;
+      }
+      .panel-body {
         padding: 1.1rem 1.15rem 1.3rem;
       }
       .panel h2 {
@@ -192,6 +194,8 @@
 
       /* ── hero ── */
       .hero {
+        grid-column: 2;
+        grid-row: 1;
         border: 1px solid var(--line);
         border-radius: 20px;
         padding: 1.5rem 1rem 1.1rem;
@@ -202,8 +206,10 @@
           transparent
         );
       }
+      /* The featured stone scales with the size dial but never overflows its
+         column. */
       #hero {
-        width: min(58vw, 330px);
+        width: min(calc(var(--tile) * 2.8), 460px, 100%);
         margin-inline: auto;
       }
       .hero .who {
@@ -218,7 +224,8 @@
 
       /* ── the ladder ── */
       .ladder {
-        margin-top: 2.25rem;
+        grid-column: 2;
+        grid-row: 2;
       }
       .ladder h2 {
         font-size: 0.72rem;
@@ -294,145 +301,234 @@
       code {
         font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
       }
+
+      /* ── small screens ── */
+      @media (max-width: 880px) {
+        main {
+          grid-template-columns: 1fr;
+          gap: 1.25rem;
+          padding: 1rem;
+        }
+        /* Featured stone first, then the controls, then the ladder. */
+        .hero {
+          grid-column: auto;
+          grid-row: auto;
+          order: 1;
+        }
+        .panel {
+          grid-column: auto;
+          grid-row: auto;
+          order: 2;
+          position: static;
+          /* Opaque and in-flow, so it can never sit over the stone. */
+          background: var(--bg-soft);
+          backdrop-filter: none;
+          overflow: hidden;
+        }
+        .ladder {
+          grid-column: auto;
+          grid-row: auto;
+          order: 3;
+        }
+        .panel > summary {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1rem 1.15rem;
+          cursor: pointer;
+          font-size: 0.72rem;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          color: var(--ink-dim);
+          font-weight: 600;
+        }
+        .panel > summary::-webkit-details-marker {
+          display: none;
+        }
+        .panel > summary::after {
+          content: '';
+          width: 0.5rem;
+          height: 0.5rem;
+          margin-top: -0.2rem;
+          border-right: 1.5px solid currentColor;
+          border-bottom: 1.5px solid currentColor;
+          transform: rotate(45deg);
+          transition: transform 0.2s ease;
+        }
+        .panel[open] > summary::after {
+          margin-top: 0.15rem;
+          transform: rotate(-135deg);
+        }
+        .panel h2 {
+          display: none;
+        }
+        .panel-body {
+          padding: 0 1.15rem 1.2rem;
+        }
+      }
+
+      @media (max-width: 600px) {
+        header {
+          padding: 2.25rem 1.1rem 1rem;
+        }
+        .hero {
+          padding: 1.1rem 0.75rem 0.9rem;
+        }
+      }
     </style>
   </head>
   <body data-stage="midnight">
     <header>
       <span class="tag">gemrenderer · MIT · framework-free</span>
       <h1 class="serif">
-        Ten gemstones, <em>ten real cuts</em>,<br />traced light — in a browser
+        Real gemstone cuts,<br /><em>ray-traced</em> in the browser
       </h1>
       <p>
-        Every stone is its own faceting: a trilliant, a baguette, an asscher, a
-        marquise, a heart, a cabochon, a pear, an emerald cut, a square
-        brilliant and a round brilliant. Each fragment traces its own hull —
-        Fresnel, refraction, total internal reflection, Beer–Lambert colour —
-        with the three channels bent at slightly different IORs, so the fire is
-        a light path, not a painted tint. <strong>Drag any stone.</strong>
+        From trilliant and baguette to pear, emerald cut, heart, cabochon and
+        more — each stone shows off a different cut. Under the hood, each pixel
+        traces a light path through the stone, giving realistic reflection,
+        refraction and dispersion. Drag any stone to spin it.
       </p>
     </header>
 
     <main>
-      <aside class="panel">
-        <h2>Options</h2>
+      <details class="panel" id="controls" open>
+        <summary>Options</summary>
+        <div class="panel-body">
+          <h2>Options</h2>
 
-        <div class="row">
-          <label for="clarity"
-            >Clarity <output id="clarity-out">9</output></label
-          >
-          <input id="clarity" type="range" min="0" max="9" step="1" value="9" />
-        </div>
-
-        <div class="row">
-          <label for="size"
-            >Stone size <output id="size-out">118px</output></label
-          >
-          <input
-            id="size"
-            type="range"
-            min="70"
-            max="420"
-            step="2"
-            value="118"
-          />
-        </div>
-
-        <div class="row">
-          <label for="fire"
-            >Fire (dispersion) <output id="fire-out">1.0×</output></label
-          >
-          <input
-            id="fire"
-            type="range"
-            min="0"
-            max="2.5"
-            step="0.05"
-            value="1"
-          />
-        </div>
-
-        <div class="row">
-          <label for="exposure"
-            >Brightness <output id="exposure-out">1.0×</output></label
-          >
-          <input
-            id="exposure"
-            type="range"
-            min="0.5"
-            max="2"
-            step="0.05"
-            value="1"
-          />
-        </div>
-
-        <div class="row">
-          <label for="bounces"
-            >Light paths <output id="bounces-out">by clarity</output></label
-          >
-          <input id="bounces" type="range" min="0" max="8" step="1" value="0" />
-        </div>
-
-        <div class="row">
-          <label>Rendering</label>
-          <div class="chips" id="mode">
-            <button class="chip" data-mode="traced" aria-pressed="true">
-              Ray-traced
-            </button>
-            <button class="chip" data-mode="physical" aria-pressed="false">
-              Rasterised
-            </button>
+          <div class="row">
+            <label for="clarity"
+              >Clarity <output id="clarity-out">9</output></label
+            >
+            <input
+              id="clarity"
+              type="range"
+              min="0"
+              max="9"
+              step="1"
+              value="9"
+            />
           </div>
-        </div>
 
-        <div class="row">
-          <label>Studio floor</label>
-          <div class="chips" id="stage">
-            <button class="chip" data-stage="midnight" aria-pressed="true">
-              Midnight
-            </button>
-            <button class="chip" data-stage="graphite" aria-pressed="false">
-              Graphite
-            </button>
-            <button class="chip" data-stage="paper" aria-pressed="false">
-              Paper
-            </button>
+          <div class="row">
+            <label for="size"
+              >Stone size <output id="size-out">118px</output></label
+            >
+            <input
+              id="size"
+              type="range"
+              min="70"
+              max="420"
+              step="2"
+              value="118"
+            />
           </div>
-        </div>
 
-        <label class="switch">
-          <span>Turntable <small>keep the featured stone spinning</small></span>
-          <input id="auto" type="checkbox" checked />
-        </label>
-        <label class="switch">
-          <span>Drop shadow</span>
-          <input id="shadow" type="checkbox" checked />
-        </label>
-        <label class="switch">
-          <span>Cut labels</span>
-          <input id="labels" type="checkbox" checked />
-        </label>
-
-        <p class="hint">
-          Baked stones are cached per gem + clarity, and the whole page shares
-          one WebGL context.
-          <a href="https://github.com/rubjo/gemrenderer">README →</a>
-        </p>
-      </aside>
-
-      <section>
-        <div class="hero">
-          <div id="hero"></div>
-          <p class="who serif" id="hero-name">Diamond</p>
-          <p class="what" id="hero-cut">Round brilliant · clarity 9</p>
-        </div>
-
-        <div class="ladder">
-          <h2>The value ladder — lowest to highest</h2>
-          <div class="grid" id="grid"></div>
-          <div class="grid-foot">
-            <span>Click a stone to feature it.</span>
-            <span id="status"></span>
+          <div class="row">
+            <label for="fire"
+              >Fire (dispersion) <output id="fire-out">1.0×</output></label
+            >
+            <input
+              id="fire"
+              type="range"
+              min="0"
+              max="2.5"
+              step="0.05"
+              value="1"
+            />
           </div>
+
+          <div class="row">
+            <label for="exposure"
+              >Brightness <output id="exposure-out">1.0×</output></label
+            >
+            <input
+              id="exposure"
+              type="range"
+              min="0.5"
+              max="2"
+              step="0.05"
+              value="1"
+            />
+          </div>
+
+          <div class="row">
+            <label for="bounces"
+              >Light paths <output id="bounces-out">by clarity</output></label
+            >
+            <input
+              id="bounces"
+              type="range"
+              min="0"
+              max="8"
+              step="1"
+              value="0"
+            />
+          </div>
+
+          <div class="row">
+            <label>Rendering</label>
+            <div class="chips" id="mode">
+              <button class="chip" data-mode="traced" aria-pressed="true">
+                Ray-traced
+              </button>
+              <button class="chip" data-mode="physical" aria-pressed="false">
+                Rasterised
+              </button>
+            </div>
+          </div>
+
+          <div class="row">
+            <label>Studio floor</label>
+            <div class="chips" id="stage">
+              <button class="chip" data-stage="midnight" aria-pressed="true">
+                Midnight
+              </button>
+              <button class="chip" data-stage="graphite" aria-pressed="false">
+                Graphite
+              </button>
+              <button class="chip" data-stage="paper" aria-pressed="false">
+                Paper
+              </button>
+            </div>
+          </div>
+
+          <label class="switch">
+            <span
+              >Turntable <small>keep the featured stone spinning</small></span
+            >
+            <input id="auto" type="checkbox" checked />
+          </label>
+          <label class="switch">
+            <span>Drop shadow</span>
+            <input id="shadow" type="checkbox" checked />
+          </label>
+          <label class="switch">
+            <span>Cut labels</span>
+            <input id="labels" type="checkbox" checked />
+          </label>
+
+          <p class="hint">
+            Every baked stone is cached by stone and clarity, and the whole page
+            shares one WebGL context.
+            <a href="https://github.com/rubjo/gemrenderer">README →</a>
+          </p>
+        </div>
+      </details>
+
+      <section class="hero">
+        <div id="hero"></div>
+        <p class="who serif" id="hero-name">Diamond</p>
+        <p class="what" id="hero-cut">Round brilliant · clarity 9</p>
+      </section>
+
+      <section class="ladder">
+        <h2>Sample gems</h2>
+        <div class="grid" id="grid"></div>
+        <div class="grid-foot">
+          <span>Click a stone to feature it.</span>
+          <span id="status"></span>
         </div>
       </section>
     </main>
@@ -449,12 +545,12 @@ new GemView('#mount', { ...gemSpec('ruby'), clarity: 8 })</code></pre>
         <a href="https://github.com/ehsanwwe/diamond-shader-lab"
           >ehsanwwe/diamond-shader-lab</a
         >
-        by Ehsan Moradi (MIT) — see
+        by Ehsan Moradi (MIT); see
         <a
           href="https://github.com/rubjo/gemrenderer/blob/main/THIRD_PARTY_NOTICES.md"
           >third-party notices</a
         >
-        for what came from where. Cut geometry after the diagrams at
+        for what came from where. Cut geometry follows the diagrams at
         <a href="http://www.facetdiagrams.net">facetdiagrams.net</a>.
       </p>
     </footer>

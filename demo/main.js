@@ -1,6 +1,6 @@
-// The GitHub Pages demo: every stone on the ladder, a featured stone you can
-// drag, and a panel wired to the knobs the library actually exposes. The ten
-// stones come from the optional presets entry; the core renders plain specs.
+// The GitHub Pages demo: a sample of stones, a featured one you can drag, and a
+// panel wired to the knobs the library actually exposes. The stones come from
+// the optional presets entry; the core renders plain specs.
 import { GemView, configure, getConfig } from '../src/index.js'
 import {
   GEM_ORDER,
@@ -70,7 +70,7 @@ function describe() {
 
 // ── the panel ──
 // Knobs that change how a stone is *baked* drop the cached stones, so a slider
-// drags through a few values before it's worth re-rendering ten of them.
+// drags through a few values before it's worth re-rendering all of them.
 function debounce(fn, ms = 180) {
   let t = 0
   return (...a) => {
@@ -94,8 +94,8 @@ $('clarity').addEventListener('input', (e) => {
 $('size').addEventListener('input', (e) => {
   const px = +e.target.value
   $('size-out').value = `${px}px`
+  // Drives both the ladder tile and the featured stone's width (see the CSS).
   document.documentElement.style.setProperty('--tile', `${px}px`)
-  $('hero').style.width = `${Math.min(px * 2.4, 460)}px`
 })
 
 $('fire').addEventListener(
@@ -163,6 +163,16 @@ $('labels').addEventListener('change', (e) => {
     for (const el of [c.name, c.cut])
       el.style.visibility = e.target.checked ? '' : 'hidden'
 })
+
+// The controls sit in a collapsible panel. On small screens it starts closed so
+// the featured stone is the first thing you see; on wide layouts it stays open.
+const controls = $('controls')
+const compact = matchMedia('(max-width: 880px)')
+const syncPanel = () => {
+  controls.open = !compact.matches
+}
+syncPanel()
+compact.addEventListener?.('change', syncPanel)
 
 document.documentElement.style.setProperty('--tile', `${$('size').value}px`)
 feature(featured)

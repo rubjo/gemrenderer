@@ -15,13 +15,7 @@ export {
   gemSig,
 } from './spec.js'
 export { CUT_FAMILIES } from './cuts.js'
-export {
-  configure,
-  getConfig,
-  resetConfig,
-  onConfigChange,
-  clarityScale,
-} from './options.js'
+export { configure, getConfig, resetConfig, onConfigChange } from './options.js'
 export {
   getGemImage,
   renderGemFrame,

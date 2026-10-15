@@ -109,6 +109,11 @@ async function ensureContext() {
     scene,
     camera,
     software,
+    // The frame search only ever reads the stone's alpha silhouette, so it
+    // renders through this trivial opaque material instead of the tracer: the
+    // fitted frame depends on geometry and pose alone, and the per-pixel light
+    // path would otherwise be traced dozens of times per cut and thrown away.
+    silhouette: new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }),
     _v3: new THREE.Vector3(),
     _inv: new THREE.Matrix4(),
     _m3: new THREE.Matrix3(),
@@ -329,6 +334,23 @@ function alphaBounds(c) {
   return x1 < 0 ? null : { x0, y0, x1, y1 }
 }
 
+// Renders one pose for the frame search and returns its alpha bounds. The
+// stone's real material is swapped out for the shared opaque silhouette one:
+// the fit is a property of the geometry and the pose, so the tracer's optics
+// contribute nothing — and tracing a full light path per pose, dozens of times
+// per cut, is what made the first bake take seconds on mobile GPUs.
+function renderSilhouette(c, mesh, spec, rotX = 0, rotY = 0) {
+  const real = mesh.material
+  mesh.material = c.silhouette
+  try {
+    poseStone(c, mesh, spec, rotX, rotY)
+    c.renderer.render(c.scene, c.camera)
+    return alphaBounds(c)
+  } finally {
+    mesh.material = real
+  }
+}
+
 // Poses sampled for the union bounds, relative to the spec's rest tilt:
 // every tumble extreme at a few spins. A drag is unbounded on both
 // axes, so the frame must survive full upside-down inversions (rx ±π/2 is
@@ -346,10 +368,34 @@ for (const rx of [-Math.PI / 2, -0.6, 0, 0.6, Math.PI / 2]) {
   for (const ry of [0, 0.4, 0.8, 1.2]) FRAME_POSES.push([rx, ry])
 }
 
+// Frame-search render size. The fitted rect is a ratio-preserving fit, so a
+// coarser frame changes nothing but the (sub-pixel at the final resolution)
+// quantization of the crop — while cutting the per-pose framebuffer readback,
+// the search's real cost, by (resolution / this)². Capped at the configured
+// resolution so a small `configure({ resolution })` never searches larger.
+const SEARCH_RES = 256
+
 function computeFrameRect(c, mesh, spec) {
   const fk = frameSig(spec)
-  const W = c.renderer.domElement.width
-  const H = c.renderer.domElement.height
+  // The fit is a pure geometry problem — it needs only the stone's silhouette
+  // bounds, which scale with the frame — so the search runs at a reduced
+  // resolution. The dominant cost is reading the framebuffer back once per
+  // pose (dozens per cut), and that readback is proportional to the frame's
+  // area; the rect is scaled back to the real frame on the way out.
+  const full = config.resolution
+  const search = Math.min(full, SEARCH_RES)
+  const k = full / search
+  if (search !== full) c.renderer.setSize(search, search, false)
+  try {
+    return fitFrameRect(c, mesh, spec, fk, search, search, k)
+  } finally {
+    if (search !== full) c.renderer.setSize(full, full, false)
+  }
+}
+
+// The search proper, rendered into a `W`×`H` frame; `k` scales its fitted
+// rect back up to the real render frame.
+function fitFrameRect(c, mesh, spec, fk, W, H, k) {
   // Y-stretch exists only to *nudge* the resting silhouette toward
   // heightRatio(). Under the presentation tilt the table view dominates the
   // silhouette height, and stretching can't close the ratio (the height is
@@ -374,11 +420,7 @@ function computeFrameRect(c, mesh, spec) {
     // alike (the ratio is scale-invariant), and the stone's x-extent barely
     // moves between poses — the correction pass below handles the rest.
     if (!calibrated) {
-      poseStone(c, mesh, spec)
-      syncStone(c, mesh)
-      beginFrame(c)
-      c.renderer.render(c.scene, c.camera)
-      const rb = alphaBounds(c)
+      const rb = renderSilhouette(c, mesh, spec)
       let done = true
       if (rb && rb.x0 > 0 && rb.y0 > 0 && rb.x1 < W - 1 && rb.y1 < H - 1) {
         const restH = rb.y1 - rb.y0 + 1
@@ -413,11 +455,9 @@ function computeFrameRect(c, mesh, spec) {
     let u = null
     let restB = null
     for (const [rx, ry] of FRAME_POSES) {
-      poseStone(c, mesh, spec, rx, ry) // same world-frame axes a view
-      syncStone(c, mesh) // drags on, so the frame bounds true reachable poses
-      beginFrame(c)
-      c.renderer.render(c.scene, c.camera)
-      const b = alphaBounds(c)
+      // The frame bounds true reachable poses — the same world-frame axes a
+      // view drags on — but the silhouette material needs no optics sync.
+      const b = renderSilhouette(c, mesh, spec, rx, ry)
       if (!b) continue
       if (rx === 0 && ry === 0) restB = b
       u = u
@@ -470,25 +510,29 @@ function computeFrameRect(c, mesh, spec) {
     poseStone(c, mesh, spec)
     const sx = Math.floor(u.x0 - mx)
     const sy = Math.floor(u.y0 - my)
-    const rect = {
-      sx,
-      sy,
-      sw: Math.ceil(u.x1 - sx + mx),
-      sh: Math.ceil(u.y1 - sy + my),
-    }
+    const sw = Math.ceil(u.x1 - sx + mx)
+    const sh = Math.ceil(u.y1 - sy + my)
     // Resting silhouette height as a fraction of the cropped frame width:
     // the caller multiplies its display width by heightRatio()·boost / ratio
-    // so every cut's stone lands on the same visual size (getGemSizing).
+    // so every cut's stone lands on the same visual size (getGemSizing). The
+    // ratio is resolution-invariant, so it's measured here in search space.
     const ratio = restB
-      ? Math.min(1.4, Math.max(0.3, (restB.y1 - restB.y0 + 1) / rect.sw))
+      ? Math.min(1.4, Math.max(0.3, (restB.y1 - restB.y0 + 1) / sw))
       : heightRatio()
+    // Scale the search-space rect back into the real render frame.
+    const rect = {
+      sx: Math.round(sx * k),
+      sy: Math.round(sy * k),
+      sw: Math.round(sw * k),
+      sh: Math.round(sh * k),
+    }
     frames.set(fk, { rect, scale, stretch, ratio })
     return rect
   }
   // Failed fit: cache the full-frame fallback so it runs *once*. A caller
   // that re-ran this per frame (the live drag) would pay the whole
   // attempt × pose search every rAF — the old drag-perf killer.
-  const fb = { sx: 0, sy: 0, sw: W, sh: H }
+  const fb = { sx: 0, sy: 0, sw: W * k, sh: H * k }
   frames.set(fk, { rect: fb, scale, stretch, ratio: heightRatio() })
   return fb
 }
@@ -644,9 +688,11 @@ function beginFrame(c) {
 //
 // The fitted frame survives most knob changes (alpha bounds don't move when
 // only the shading changes), and recalibrating it is the expensive part: a
-// frame re-fit costs up to 12 attempts × 20 poses of full-canvas alpha scans.
-// It only goes stale when the stone's *shape on the canvas* changes — the
-// height ratio or the render resolution — so `frames: false` keeps it.
+// frame re-fit still costs up to 12 attempts × 20 poses of alpha scans, though
+// both the silhouette material and the reduced search resolution (SEARCH_RES)
+// keep those scans cheap. It only goes stale when the stone's *shape on the
+// canvas* changes — the height ratio or the render resolution — so
+// `frames: false` keeps it.
 export function invalidate({ frames: dropFrames = true } = {}) {
   cache.clear()
   restPads.clear()

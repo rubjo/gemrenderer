@@ -6,8 +6,6 @@
 //
 //   scale.baseHeight   resting stone height as a fraction of the mount's
 //                      box width, shared by every cut
-//   scale.clarityStep     size ladder from one clarity to the next down
-//                      (1 → all clarity levels equal, 0.95 → clearly stepped)
 //   tracer             ray-traced light paths on/off (off falls back to the
 //                      rasterised MeshPhysicalMaterial look)
 //   exposure           global brightness, applied to both materials
@@ -22,8 +20,6 @@ const DEFAULTS = {
     // 0.75 leaves ~12% air above and below the stone in its box. Raise to grow
     // every gem together.
     baseHeight: 0.75,
-    // The current ladder spans only ~9% from the lowest clarity to the highest.
-    clarityStep: 0.96,
   },
   tracer: true,
   exposure: 1,
@@ -46,7 +42,7 @@ export function onConfigChange(fn) {
 /**
  * Merge options into the live config.
  *
- * @param {object} patch e.g. `{ exposure: 1.2, scale: { clarityStep: 0.99 } }`.
+ * @param {object} patch e.g. `{ exposure: 1.2, scale: { baseHeight: 0.8 } }`.
  *   `scale` merges key-by-key so callers can set one dial without restating
  *   the rest.
  * @returns {object} the live config object.
@@ -76,10 +72,4 @@ export function resetConfig() {
 /** A frozen snapshot of the current knobs (safe to log or serialise). */
 export function getConfig() {
   return structuredClone(config)
-}
-
-/** Stone height for `clarity` as a fraction of the mount's box width. */
-export function clarityScale(clarity) {
-  const t = Math.min(9, Math.max(0, Math.round(Number(clarity) || 0)))
-  return config.scale.clarityStep ** (9 - t)
 }

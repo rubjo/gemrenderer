@@ -12,14 +12,12 @@ export const GEM_STYLES = `
 
 /* The frame the render is cropped to carries per-cut spin headroom, so the
    image scales by --gr-fit until the *stone* itself is the ladder's height:
-   the extra transparent padding simply overflows the box, centred on the
-   stone (--gr-origin-y) rather than stretching it. */
+   the extra transparent padding simply overflows the box rather than
+   stretching the stone. */
 .gr-wrap {
   display: block;
   width: 100%;
   border-radius: 12%;
-  transform: scale(var(--gr-scale, 1));
-  transform-origin: 50% calc(var(--gr-origin-y, 0.365) * 100cqw);
 }
 .gr-wrap:focus-visible {
   outline: 2px solid var(--gr-base, #4b8fc4);

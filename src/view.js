@@ -29,7 +29,7 @@ import {
   getGemSizing,
   renderGemFrame,
 } from './renderer.js'
-import { clarityScale, onConfigChange } from './options.js'
+import { onConfigChange } from './options.js'
 import { createGemSpin } from './spin.js'
 import { injectGemStyles } from './styles.js'
 
@@ -185,8 +185,6 @@ export class GemView {
       '--gr-mb',
       String(this.opts.balance ? (top - bottom) * fit : inset - bottom * fit),
     )
-    s.setProperty('--gr-origin-y', String(top * fit + target / 2))
-    s.setProperty('--gr-scale', String(clarityScale(this.clarity)))
 
     const orb = this.spec.orb
     s.setProperty('--gr-light', orb.light)
