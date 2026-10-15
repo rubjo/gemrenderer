@@ -1,6 +1,6 @@
 # gemrenderer
 
-**Gemstones, cut the way they're meant to be. Ray-traced in the browser, with no framework required.**
+**Gemstones, cut the way they're meant to be. Ray-traced in the browser, with no frontend framework required.**
 
 ## Support
 
