@@ -246,9 +246,11 @@ cutSel.value = custom.cut
 // changing a knob you can see nothing happen on is just confusing.
 const applyCustom = () => feature('custom')
 
+// `debounce`, not `live`: these must not fire at registration, or the page
+// would open featuring a Custom stone before the user touched anything.
 $('gem-color').addEventListener(
   'input',
-  live(() => {
+  debounce(() => {
     custom.color = $('gem-color').value
     applyCustom()
   }),
@@ -256,7 +258,7 @@ $('gem-color').addEventListener(
 
 $('gem-cut').addEventListener(
   'change',
-  live(() => {
+  debounce(() => {
     custom.cut = cutSel.value
     applyCustom()
   }),
