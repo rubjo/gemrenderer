@@ -11,8 +11,12 @@
 //   exposure           global brightness, applied to both materials
 //   dispersion         multiplier on chromatic fire (tracer only)
 //   bounces            internal light paths per fragment; null ramps them
-//                      with the clarity (3 at clarity 0 → 5 at clarity 9)
+//                      with the clarity (3 at clarity 0 → 5 at clarity 9).
+//                      A spec's own `bounces` overrides this per stone
 //   environment        intensity of the studio env map (physical material)
+//   glint              strength of the bloom around the tracer's hot facets
+//                      (0 = off, no post pass; tracer only). A spec's own
+//                      `glint` overrides this per stone
 //   resolution         the square render frame in px (crop + headroom budget)
 
 const DEFAULTS = {
@@ -26,6 +30,7 @@ const DEFAULTS = {
   dispersion: 1,
   bounces: null,
   environment: 0.18,
+  glint: 0,
   resolution: 640,
 }
 

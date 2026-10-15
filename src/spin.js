@@ -49,6 +49,7 @@ export function createGemSpin({
   let vY = 0 // rad/s — horizontal velocity carried out of a drag
   let vX = 0 // rad/s — vertical velocity
   let coasting = false // riding a release's momentum
+  let pending = false // a repaint arrived while a draw was in flight
 
   const now = () =>
     typeof performance !== 'undefined' ? performance.now() : Date.now()
@@ -67,7 +68,15 @@ export function createGemSpin({
   }
 
   async function paint() {
-    if (drawing || destroyed) return
+    if (destroyed) return
+    // A re-bake can hold the single draw slot for seconds; a repaint that
+    // lands meanwhile (e.g. a configure() swapped in a fresh canvas) must not
+    // be dropped, or the new canvas stays empty. Redraw at the latest
+    // rotation once the in-flight draw lands.
+    if (drawing) {
+      pending = true
+      return
+    }
     drawing = true
     try {
       await draw?.(rot.y, rot.x)
@@ -75,6 +84,10 @@ export function createGemSpin({
       // A dropped frame just keeps the previous one; the next drag retries.
     }
     drawing = false
+    if (pending && !destroyed) {
+      pending = false
+      schedule()
+    }
   }
 
   function frame(t) {

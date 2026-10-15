@@ -1,7 +1,7 @@
 {
   "name": "gemrenderer",
   "version": "0.2.0",
-  "description": "A generic gemstone renderer: colour + cut family + real optics, ray-traced light paths in one shared WebGL context, no framework.",
+  "description": "A generic gemstone renderer: colour + cut family + real optics, ray-traced light paths in one shared WebGL context",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,

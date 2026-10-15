@@ -1,7 +1,7 @@
 // ── gemrenderer ──────────────────────────────────────────────────────────
 // A generic gemstone renderer: describe a stone by its parts — body colour, a
 // cut family, real optical constants — and get ray-traced light paths in one
-// shared WebGL context, no framework. See README.md for the tour; the ten
+// shared WebGL context. See README.md for the tour; the ten
 // ready-made stones live in `gemrenderer/presets`.
 
 export {

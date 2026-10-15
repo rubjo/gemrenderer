@@ -34,6 +34,11 @@
 // The fragment shader ends in Reinhard mapping + sRGB encode (the material is
 // `toneMapped: false`), matching the source lab's approach of keeping the
 // facet detail under 1.0 and re-adding the true glints on top.
+//
+// With `configure({ glint })` on, the material compiles an `hdr` variant
+// instead: the tail writes the linear HDR `o` (base Reinhard still applied, so
+// facet detail stays under 1) and skips the clamp + sRGB encode. The glint post
+// pass (`src/glint.js`) then spreads the >1 pixels and does the display encode.
 
 import { config } from './options.js'
 
@@ -237,24 +242,43 @@ void main(){
   vec3 base=col/(1.+col);                          // Reinhard: facet detail < 1
   float l=dot(col,vec3(.299,.587,.114));
   vec3 o=base+col*smoothstep(1.,4.,l)*uHighlight;  // glints ride above
+#ifdef GLINT
+  // Linear HDR: leave the glints above 1 for the bloom pass to spread, and let
+  // it do the display encode.
+  gl_FragColor=vec4(o,1.);
+#else
   o=clamp(o,0.,1.);
   o=mix(o*12.92,pow(o,vec3(1./2.4))*1.055-.055,step(vec3(.0031308),o)); // sRGB
   gl_FragColor=vec4(o,1.);
+#endif
 }`
 
 // One ShaderMaterial per baked stone (the stones cache already keys gem+clarity):
 // the bounce count is a #define, so higher clarity levels compile—and pay for—more
-// internal light paths. Optics (`ior`, `fire`) come straight from the spec.
+// internal light paths. Optics (`ior`, `fire`, `bounces`) come from the spec.
 export function makeTracerMaterial(
   THREE,
-  { clarity, colorHex, ior = 1.77, fire = 0.4, bright = 1 },
+  {
+    clarity,
+    colorHex,
+    ior = 1.77,
+    fire = 0.4,
+    bright = 1,
+    bounces = null,
+    hdr = false,
+  },
 ) {
   const t = Math.min(9, Math.max(0, clarity))
   // Internal light paths start at three bounces even for the cheapest
   // stones — glassiness isn't a luxury feature; higher clarity levels lengthen the
   // journey toward the full fire-and-blaze. `configure({ bounces })` pins
-  // the count for every clarity instead (quality dial in the demo).
-  const bounces = Math.min(8, config.bounces ?? 3 + Math.floor(t * 0.25))
+  // the count for every clarity instead (quality dial in the demo), and a
+  // spec's own `bounces` outranks even that — one stone can spend more paths
+  // without re-baking every other.
+  const paths = Math.min(
+    8,
+    bounces ?? config.bounces ?? 3 + Math.floor(t * 0.25),
+  )
   const absorb = absorptionFor(colorHex)
   const body = [
     srgbToLinear(((colorHex >> 16) & 255) / 255),
@@ -269,7 +293,7 @@ export function makeTracerMaterial(
   const bling = 0.68 + 0.37 * (t / 9)
   return new THREE.ShaderMaterial({
     vertexShader: vertexGLSL,
-    fragmentShader: `#define BOUNCES ${bounces}\n${fragmentGLSL}`,
+    fragmentShader: `${hdr ? '#define GLINT\n' : ''}#define BOUNCES ${paths}\n${fragmentGLSL}`,
     uniforms: {
       uIor: { value: ior },
       uDispersion: {
@@ -286,7 +310,9 @@ export function makeTracerMaterial(
       uPlaneCount: { value: 0 },
       uPlanes: { value: [] },
     },
-    toneMapped: false, // the shader Reinhard-maps and sRGB-encodes itself
+    // The shader owns the output: Reinhard + sRGB itself, or (glint on) linear
+    // HDR for the post pass — never three's tone mapping.
+    toneMapped: false,
     // DoubleSide, like the physical materials: a few legacy strips in the
     // hand-built geometries wind inward, and FrontSide would punch
     // see-through holes there. The tracer ignores rasterised normals anyway

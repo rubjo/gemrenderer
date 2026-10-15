@@ -13,6 +13,22 @@
       document.title = 'RESULT ' + (ok ? 'PASS' : 'FAIL') + ' ' + log.join('|')
     }
     const imgOf = (el) => el.querySelector('img.gr-gem, canvas.gr-gem')
+    // Alpha of the top-left pixel of a data-URL PNG (the frame corner, which
+    // sits outside the stone and so must stay transparent).
+    const cornerAlpha = (url) =>
+      new Promise((res) => {
+        const im = new Image()
+        im.onload = () => {
+          const cv = document.createElement('canvas')
+          cv.width = im.width
+          cv.height = im.height
+          const g = cv.getContext('2d')
+          g.drawImage(im, 0, 0)
+          res(g.getImageData(0, 0, 1, 1).data[3])
+        }
+        im.onerror = () => res(-1)
+        im.src = url
+      })
 
     try {
       const a = new GemView('#a', {
@@ -83,7 +99,19 @@
       log.push(`select=${tapped}`)
       log.push(`rot=${a.spin.rot.y.toFixed(2)}`)
 
-      // 6. teardown stops cleanly
+      // 6. the glint pass re-bakes to a *different* PNG, and one that keeps its
+      // transparent corner (the alpha contract the bloom chain must not break).
+      const plain = await getGemImage(gemSpec('emerald'), 5)
+      configure({ glint: 0.9 })
+      const glow = await getGemImage(gemSpec('emerald'), 5)
+      log.push(
+        `glint=${typeof glow === 'string' && glow.startsWith('data:image/png')}`,
+      )
+      log.push(`glintDiff=${typeof plain === 'string' && glow !== plain}`)
+      log.push(`glintAlpha=${(await cornerAlpha(glow)) === 0}`)
+      configure({ glint: 0 })
+
+      // 7. teardown stops cleanly
       a.destroy()
       b.destroy()
       log.push(`destroyed=${a.el.children.length === 0}`)

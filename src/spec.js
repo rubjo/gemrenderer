@@ -24,9 +24,15 @@
 //   ior        refractive index (drives Fresnel + the bend of the light path).
 //   fire       dispersion relative to diamond's (1.0) — the per-channel IOR
 //              spread that makes the chromatic fire.
+//   bright     per-stone brilliance multiplier (env sparkle + inner fire).
+//   bounces    internal light paths per fragment for this stone; null follows
+//              the page-wide `configure({ bounces })` knob (which itself ramps
+//              with clarity). Lets one stone spend more light paths without
+//              re-baking every other stone.
+//   glint      per-stone bloom strength override; null follows the page-wide
+//              `configure({ glint })` knob. `0` opts this stone out of the pass.
 //   glow       colour of the fire light inside the stone; null → derived from
 //              `color`.
-//   bright     per-stone brilliance multiplier (env sparkle + inner fire).
 //   orb        { light, base, dark } CSS colours for the placeholder orb; null →
 //              derived from `color`. Never affects the baked render.
 //   restTilt   resting lean about the screen-x axis, in radians (silhouette cuts
@@ -50,6 +56,8 @@ const DEFAULT_SPEC = {
   fire: 0.4,
   glow: null,
   bright: 1,
+  bounces: null,
+  glint: null,
   orb: null,
   restTilt: 0,
   restYaw: BASE_YAW,
@@ -94,7 +102,24 @@ function deriveGlow(color) {
 // pure — every public entry point funnels its input through here, so the cache
 // signatures below see a stable shape no matter how terse the call was.
 export function resolveSpec(spec = {}) {
-  const s = { ...DEFAULT_SPEC, ...spec }
+  // A caller passing an explicit `null` for a numeric field means "use the
+  // default" — delete it before the merge so the default shows through.
+  // (`glow`/`orb` keep their nulls: those *mean* "derive from colour".)
+  const c = { ...spec }
+  for (const k of [
+    'color',
+    'cut',
+    'ior',
+    'fire',
+    'bright',
+    'bounces',
+    'glint',
+    'restTilt',
+    'restYaw',
+    'sizeBoost',
+  ])
+    if (c[k] === null) delete c[k]
+  const s = { ...DEFAULT_SPEC, ...c }
   const cut = { family: 'brilliant', ...(s.cut || {}) }
   const color = Number(s.color)
   return {
@@ -133,5 +158,5 @@ export function frameSig(s) {
   return `${geomSig(s)}|${s.restTilt}|${s.restYaw}`
 }
 export function gemSig(s) {
-  return `${frameSig(s)}|${s.color}|${s.ior}|${s.fire}|${s.bright}|${s.glow}`
+  return `${frameSig(s)}|${s.color}|${s.ior}|${s.fire}|${s.bright}|${s.glow}|${s.bounces}|${s.glint}`
 }

@@ -41,6 +41,8 @@ const SPEC_KEYS = [
   'fire',
   'glow',
   'bright',
+  'bounces',
+  'glint',
   'orb',
   'restTilt',
   'restYaw',

@@ -15,6 +15,7 @@ gemrenderer renders gemstones by describing them in parts: a body colour, a cut,
 The library doesn't hardcode any specific gemstone names. Instead, it ships a set of ready-made stones (benitoite, red beryl, musgravite, painite, alexandrite, paraíba, sapphire, emerald, ruby and diamond) as presets in [`gemrenderer/presets`](#presets). You can use them as-is, or define your own from scratch.
 
 - **Works with or without a framework.** There's a vanilla DOM class, plus a small pure-function core and pointer gesture. You can also use it in Vue, React, Svelte or plain HTML/JS.
+- **Optionally glinting.** `configure({ glint })` adds a small bloom pass so the facets that catch the studio's hot spots flare softly instead of clipping to hard white. Off by default — no post pass, no cost.
 - **One WebGL context for the whole page.** Stones are baked once per (spec, clarity) and cached. Static images and live spinners share the same meshes, so nothing is wasted.
 - **Falls back gracefully without WebGL.** If the browser can't create a WebGL context, it keeps a placeholder and your layout stays intact.
 - **No assets, no build step.** Everything runs from plain ESM source with a small procedural HDR studio.
@@ -22,7 +23,7 @@ The library doesn't hardcode any specific gemstone names. Instead, it ships a se
 
 ## Demo
 
-**[rubjo.github.io/gemrenderer](https://rubjo.github.io/gemrenderer/)** — Every preset on display, drag any of them to spin it. The options panel lets you tweak clarity, fire, brightness, light paths, rendering mode and the studio background.
+**[rubjo.github.io/gemrenderer](https://rubjo.github.io/gemrenderer/)** — Every preset on display; drag any of them to spin it. Feature a stone, then make it yours: changing its colour or cut (or hitting Randomize) turns the featured stone into a _Custom_ one — the optics knobs on the panel (fire, light paths, glint) belong to the ray-traced path and grey out when the renderer is set to rasterised.
 
 ## Install
 
@@ -50,3 +51,5 @@ new GemView('#mount', { ...gemSpec('ruby'), clarity: 8 })
 ```
 
 That's it for most use cases. A placeholder appears first, then the baked stone replaces it. Once you drag it, it becomes a live canvas that spins freely in both directions and eases back to its resting position when you let go.
+
+Per-stone looks come from the spec; page-wide knobs — brightness everywhere, plus dispersion, light paths and `glint` on the ray-traced path — are set once with `configure()` and re-bake every mounted stone lazily. An individual spec can also pin its own `fire`, `bright`, `bounces` or `glint`, so one stone gets different optics without touching the others. A design note on the glint pass lives in [`docs/glint.md`](docs/glint.md).

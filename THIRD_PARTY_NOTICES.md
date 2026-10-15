@@ -1,5 +1,47 @@
 # Third-party notices
 
+## three.js — © three.js authors, MIT
+
+**Repository:** https://github.com/mrdoob/three.js
+
+three.js is a peer dependency, but the glint bloom pass (`src/glint.js`) also
+adapts two of its shader techniques rather than only importing the library:
+
+- **Bright-pass threshold.** The `smoothstep` threshold-with-knee that isolates
+  the hot pixels follows the bright-pass stage of `UnrealBloomPass`
+  (`examples/jsm/postprocessing/UnrealBloomPass.js`).
+- **Separable Gaussian blur.** The nine-tap kernel in `BLUR` — including the
+  1.3846 / 3.2308 linear-sample offsets and the 0.227 / 0.316 / 0.070 weights —
+  is the kernel from `HorizontalBlurShader` / `VerticalBlurShader`
+  (`examples/jsm/shaders/`), folded into one shader with a direction uniform.
+
+Both are MIT-licensed; the licence below is reproduced because their code ships
+here.
+
+```
+MIT License
+
+Copyright © 2010-2026 three.js authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## diamond-shader-lab — © Ehsan Moradi, MIT
 
 **Repository:** https://github.com/ehsanwwe/diamond-shader-lab

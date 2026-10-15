@@ -17,6 +17,7 @@ import { resolveSpec, resolveClarity, frameSig, gemSig } from './spec.js'
 import { getGeometry } from './cuts.js'
 import { config, configure, onConfigChange } from './options.js'
 import { makeTracerMaterial, loadTracerHull } from './tracer.js'
+import { createGlint } from './glint.js'
 
 const cache = new Map() // `gemSig:clarity` -> Promise<dataURL|null>
 
@@ -183,6 +184,10 @@ async function getStone(c, spec, clarity) {
         ior: spec.ior,
         fire: spec.fire,
         bright,
+        bounces: spec.bounces,
+        // Glint needs the tracer's linear HDR feed, so the material's output
+        // stage follows the same predicate the post pass does.
+        hdr: glintOn(c, spec),
       })
       await loadTracerHull(THREE, mat, geo)
     } else {
@@ -546,6 +551,41 @@ function cropFrame(c, r) {
   return out.toDataURL('image/png')
 }
 
+// The glint bloom pass applies only to the tracer's linear-HDR output, and only
+// where the context can render to float targets; everywhere else the plain draw
+// (with the tracer's own in-shader encode) is used. A spec's own `glint` field
+// overrides the page knob — per-stone bloom, so one flashy stone doesn't haze
+// every other (`0` opts out entirely).
+function glintStrength(s) {
+  return s?.glint ?? config.glint
+}
+function glintOn(c, s) {
+  return (
+    glintStrength(s) > 0 &&
+    config.tracer &&
+    !c.software &&
+    c.renderer.capabilities.isWebGL2
+  )
+}
+
+// Both bake paths draw through here, so the bloom chain (when on) wraps the draw
+// once. The chain is built on first use, resizes with the render frame, and is
+// torn down when the page knob goes back to 0 — see invalidate(). A per-spec
+// glint then just rebuilds the chain lazily on the next draw that wants it.
+function drawScene(c, s) {
+  if (glintOn(c, s)) {
+    if (!c.glint) c.glint = createGlint(c.THREE, c.renderer, config.resolution)
+    if (c.glint) {
+      c.glint.render(c.scene, c.camera, glintStrength(s))
+      return
+    }
+  }
+  // A glint chain that ran earlier (and may since be gone) leaves the renderer
+  // pointed at its float targets; the plain draw must aim at the canvas.
+  c.renderer.setRenderTarget(null)
+  c.renderer.render(c.scene, c.camera)
+}
+
 function renderGem(spec, clarity) {
   return enqueue(async () => {
     const c = await ensureContext()
@@ -555,7 +595,7 @@ function renderGem(spec, clarity) {
     poseStone(c, mesh, spec)
     syncStone(c, mesh)
     beginFrame(c)
-    c.renderer.render(c.scene, c.camera)
+    drawScene(c, spec)
     if (r) {
       // How far the resting stone's edges sit inside the (tilt-padded) frame
       // — see restPads.
@@ -630,7 +670,7 @@ export async function renderGemFrame(
     poseStone(c, mesh, s, rotX, rotY)
     syncStone(c, mesh)
     beginFrame(c)
-    c.renderer.render(c.scene, c.camera)
+    drawScene(c, s)
     const src = c.renderer.domElement
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
     const w = Math.max(
@@ -706,7 +746,16 @@ export function invalidate({ frames: dropFrames = true } = {}) {
     }
     stones.clear()
     mounted = null
-    if (ctx) ctx.renderer.setSize(config.resolution, config.resolution, false)
+    if (ctx) {
+      ctx.renderer.setSize(config.resolution, config.resolution, false)
+      // The glint chain tracks the render frame; rebuild it against the new
+      // resolution, or drop it entirely once the knob is back to 0.
+      if (glintOn(ctx)) ctx.glint?.setSize(config.resolution)
+      else if (ctx.glint) {
+        ctx.glint.dispose()
+        ctx.glint = null
+      }
+    }
   })
 }
 
