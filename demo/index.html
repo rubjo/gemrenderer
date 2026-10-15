@@ -17,6 +17,9 @@
         --ink-dim: #8f9bb3;
         --accent: #7fb2ff;
         --tile: 118px;
+        /* The featured stone's width — driven by the Featured size dial; the
+           ladder tiles stay at --tile. */
+        --hero: 330px;
       }
       /* Three studio floors to view the stones on. */
       body[data-stage='graphite'] {
@@ -149,6 +152,64 @@
         width: 100%;
         accent-color: var(--accent);
       }
+      input[type='range']:disabled {
+        cursor: not-allowed;
+      }
+      /* Panel group headings — the knobs are ordered by what they actually
+         touch: mode, the stone, its custom twin, the tracer's optics, then
+         the staging. */
+      .grp {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 0.5rem;
+        font-size: 0.66rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-dim);
+        font-weight: 600;
+        margin: 1.3rem 0 0.6rem;
+      }
+      .grp:first-of-type {
+        margin-top: 0;
+      }
+      .grp small {
+        font-weight: 500;
+        letter-spacing: 0.1em;
+        opacity: 0.7;
+      }
+      /* Knobs the ray tracer alone honours — dimmed and disabled while the
+         rasterised renderer is active (see main.js syncTracerOnly). */
+      .tracer-only {
+        transition: opacity 0.25s ease;
+      }
+      .tracer-only.is-off {
+        opacity: 0.38;
+      }
+      #gem-random {
+        width: 100%;
+        margin-top: 0.15rem;
+      }
+      input[type='color'] {
+        width: 100%;
+        height: 2.1rem;
+        padding: 0.2rem;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--bg);
+        cursor: pointer;
+      }
+      select {
+        width: 100%;
+        font: inherit;
+        font-size: 0.82rem;
+        color: var(--ink);
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 0.4rem 0.55rem;
+        cursor: pointer;
+      }
       .chips {
         display: flex;
         flex-wrap: wrap;
@@ -206,10 +267,10 @@
           transparent
         );
       }
-      /* The featured stone scales with the size dial but never overflows its
+      /* The featured stone scales with its dial but never overflows its
          column. */
       #hero {
-        width: min(calc(var(--tile) * 2.8), 460px, 100%);
+        width: min(var(--hero), 100%);
         margin-inline: auto;
       }
       .hero .who {
@@ -397,6 +458,20 @@
         <div class="panel-body">
           <h2>Options</h2>
 
+          <p class="grp">Rendering</p>
+
+          <div class="row">
+            <label>Mode</label>
+            <div class="chips" id="mode">
+              <button class="chip" data-mode="traced" aria-pressed="true">
+                Ray-traced
+              </button>
+              <button class="chip" data-mode="physical" aria-pressed="false">
+                Rasterised
+              </button>
+            </div>
+          </div>
+
           <div class="row">
             <label for="clarity"
               >Clarity <output id="clarity-out">9</output></label
@@ -411,21 +486,27 @@
             />
           </div>
 
+          <p class="grp">Custom stone</p>
+
           <div class="row">
-            <label for="size"
-              >Stone size <output id="size-out">118px</output></label
-            >
-            <input
-              id="size"
-              type="range"
-              min="70"
-              max="420"
-              step="2"
-              value="118"
-            />
+            <label for="gem-color">Colour</label>
+            <input id="gem-color" type="color" value="#e5f2ff" />
           </div>
 
           <div class="row">
+            <label for="gem-cut">Cut</label>
+            <select id="gem-cut"></select>
+          </div>
+
+          <div class="row">
+            <button id="gem-random" class="chip" type="button">
+              Randomize
+            </button>
+          </div>
+
+          <p class="grp">Optics <small>ray-traced only</small></p>
+
+          <div class="row tracer-only">
             <label for="fire"
               >Fire (dispersion) <output id="fire-out">1.0×</output></label
             >
@@ -439,21 +520,7 @@
             />
           </div>
 
-          <div class="row">
-            <label for="exposure"
-              >Brightness <output id="exposure-out">1.0×</output></label
-            >
-            <input
-              id="exposure"
-              type="range"
-              min="0.5"
-              max="2"
-              step="0.05"
-              value="1"
-            />
-          </div>
-
-          <div class="row">
+          <div class="row tracer-only">
             <label for="bounces"
               >Light paths <output id="bounces-out">by clarity</output></label
             >
@@ -467,16 +534,34 @@
             />
           </div>
 
+          <div class="row tracer-only">
+            <label for="glint"
+              >Glint <output id="glint-out">0.40×</output></label
+            >
+            <input
+              id="glint"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.40"
+            />
+          </div>
+
+          <p class="grp">Stage</p>
+
           <div class="row">
-            <label>Rendering</label>
-            <div class="chips" id="mode">
-              <button class="chip" data-mode="traced" aria-pressed="true">
-                Ray-traced
-              </button>
-              <button class="chip" data-mode="physical" aria-pressed="false">
-                Rasterised
-              </button>
-            </div>
+            <label for="exposure"
+              >Brightness <output id="exposure-out">1.0×</output></label
+            >
+            <input
+              id="exposure"
+              type="range"
+              min="0.5"
+              max="2"
+              step="0.05"
+              value="1"
+            />
           </div>
 
           <div class="row">
@@ -494,19 +579,25 @@
             </div>
           </div>
 
+          <div class="row">
+            <label for="size"
+              >Featured size <output id="size-out">330px</output></label
+            >
+            <input
+              id="size"
+              type="range"
+              min="140"
+              max="460"
+              step="5"
+              value="330"
+            />
+          </div>
+
           <label class="switch">
             <span
               >Turntable <small>keep the featured stone spinning</small></span
             >
             <input id="auto" type="checkbox" checked />
-          </label>
-          <label class="switch">
-            <span>Drop shadow</span>
-            <input id="shadow" type="checkbox" checked />
-          </label>
-          <label class="switch">
-            <span>Cut labels</span>
-            <input id="labels" type="checkbox" checked />
           </label>
 
           <p class="hint">
